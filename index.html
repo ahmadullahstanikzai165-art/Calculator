@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ps" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>پښتو کیبورډ</title>
+<style>
+:root{
+  --bg:#EDF1EE; --key:#FFFFFF; --key-t:#14231C; --act:#CBD6CF; --green:#1F5C45; --green-t:#fff;
+  --gold:#B8892B; --text:#14231C; --card:#fff; --line:#C3CEC7;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#101A15; --key:#24352C; --key-t:#EEF4F0; --act:#18261F; --green:#2F8A67; --gold:#D9A93E; --text:#EEF4F0; --card:#18261F; --line:#33463B;}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:"Noto Naskh Arabic","Droid Arabic Naskh",Tahoma,Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:6px;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
+header h1{font-size:20px;margin:0;flex:1}
+.tool{border:0;background:var(--card);color:var(--text);font:inherit;font-size:16px;padding:8px 14px;border-radius:10px;border:1px solid var(--line)}
+#ta{flex:1;min-height:80px;margin:0 10px;padding:12px;font:inherit;font-size:26px;line-height:1.7;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);resize:none;outline:none;user-select:text;-webkit-user-select:text}
+#sug{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;min-height:56px;scrollbar-width:none}
+#sug::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;font-size:24px;padding:6px 18px;border-radius:22px;white-space:nowrap}
+.chip.first{background:var(--green);color:var(--green-t);border-color:var(--green)}
+#kb{padding:6px 4px;padding-bottom:max(8px,env(safe-area-inset-bottom));background:var(--act);display:flex;flex-direction:column;gap:6px}
+.row{display:flex;gap:4px;direction:rtl}
+.row.ltr{direction:ltr}
+.k{flex:1 1 0;min-width:0;height:56px;border:0;border-radius:9px;background:var(--key);color:var(--key-t);font:inherit;font-size:28px;box-shadow:0 1px 0 var(--line);display:flex;align-items:center;justify-content:center;padding:0;touch-action:manipulation}
+.k:active,.k.on{background:var(--green);color:var(--green-t)}
+.k.fn{background:var(--line);font-size:18px}
+.k.go{background:var(--green);color:var(--green-t);font-size:22px}
+.k.gold{background:var(--gold);color:#fff;font-size:22px}
+.k.sp{flex:4;font-size:18px}
+.k.w2{flex:1.5}
+#isl{display:none;flex-direction:column;gap:8px;padding:10px;background:var(--act);max-height:46vh;overflow-y:auto}
+#isl.show{display:flex}
+#isl .p{border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;font-size:24px;padding:12px;border-radius:12px;text-align:center}
+#isl .p:active{background:var(--green);color:var(--green-t)}
+#isl .back{background:var(--green);color:var(--green-t);border:0;font:inherit;font-size:20px;padding:12px;border-radius:12px;position:sticky;top:0}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:8px 18px;border-radius:20px;font-size:16px;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>پښتو • English</h1>
+  <button class="tool" id="copy">کاپي</button>
+  <button class="tool" id="clear">پاکول</button>
+</header>
+<textarea id="ta" dir="auto" inputmode="none" placeholder="دلته ولیکئ..." autocomplete="off" spellcheck="false"></textarea>
+<div id="sug"></div>
+<div id="isl"></div>
+<div id="kb"></div>
+<div id="toast"></div>
+
+<script>
+/* ===== کیبورډ ځانګړتیاوې ===== */
+var PS_ROWS=[
+ "ا ب پ ت ټ ث ج چ ځ".split(" "),
+ "څ ح خ د ډ ذ ر ړ ز".split(" "),
+ "ږ ژ س ش ښ ص ض ط ظ".split(" "),
+ "ع غ ف ق ک ګ ل م ن".split(" "),
+ "ڼ و ه ی ې ۍ ئ ي ۀ".split(" ")
+];
+var PS_EXTRA=["ء","آ","ؤ","ة","،","؟"];
+var EN_ROWS=["qwertyuiop".split(""),"asdfghjkl".split(""),"zxcvbnm".split("")];
+var SYM_ROWS=[
+ "۱ ۲ ۳ ۴ ۵ ۶ ۷ ۸ ۹ ۰".split(" "),
+ "1 2 3 4 5 6 7 8 9 0".split(" "),
+ "، ؛ ؟ . ! : - ( ) /".split(" "),
+ "َ ُ ِ ً ٌ ٍ ّ ْ ٰ ٔ".split(" "),
+ "@ # % & + = \" ' _ *".split(" ")
+];
+
+/* ===== اسلامي لیکنې ===== */
+var ISLAMIC=[
+ "بسم الله الرحمن الرحيم",
+ "السلام علیکم ورحمة الله وبرکاته",
+ "وعلیکم السلام ورحمة الله وبرکاته",
+ "الحمد لله",
+ "سبحان الله",
+ "الله اکبر",
+ "ان شاء الله",
+ "ما شاء الله",
+ "لا اله الا الله",
+ "لا حول ولا قوة الا بالله",
+ "استغفر الله",
+ "جزاک الله خیرا",
+ "بارک الله فیک",
+ "صلی الله علیه وسلم",
+ "رضي الله عنه",
+ "رحمه الله",
+ "آمین",
+ "رمضان مبارک",
+ "عید مبارک",
+ "جمعه مبارک",
+ "الله دې درباندې رحم وکړي",
+ "الله دې ستاسو دعا قبوله کړي"
+];
+
+/* ===== د کلیمو قاموس (کولای شئ زیات کړئ) ===== */
+var PS_WORDS=("زه ته هغه موږ تاسو دوی څنګه څه چیرته ولې کله ښه ډېر لږ نوی زوړ کور ښوونځی مکتب زده_کوونکی ښوونکی کتاب قلم نمره ټولګی امتحان درس لوست کار ورځ شپه سهار ماښام نن سبا پرون اوبه ډوډۍ چای مور پلار ورور خور زوی لور ملګری پښتو افغانستان کابل قندهار هرات مننه مهرباني بخښنه هو نه سلام ځکه خو او یا که چې دا دغه هغوی زموږ ستاسو ما تا اونۍ میاشت کال وخت ساعت پیسې بازار موټر لار ښار کلی ولایت هیواد حکومت ملت خلک ماشوم ښځه سړی نجلۍ هلک ډاکتر روغتون درمل روغتیا ژبه لیکل لوستل ویل تلل راتلل خوړل څښل پوهیدل زده_کړه پوهنه پوهنتون علم اسلام قرآن نماز روژه زکات حج مسجد مدرسه الله محمد رسول پیغمبر دعا ایمان ثواب عبادت جمعه رمضان عید ډیر ښه_راغلاست خدای_پامان لیک لیکوال شاګرد استاد حاضري غیرحاضر ثبت نوم تخلص پلار_نوم عمر شمیره تلیفون آدرس").split(" ").map(function(w){return w.replace(/_/g," ")});
+var EN_WORDS=("the be to of and a in that have it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us hello thank thanks please welcome school student teacher book pencil class exam lesson name father mother brother sister friend house water food today tomorrow yesterday morning evening night money market city village country government love peace Islam Quran prayer mosque Allah Muhammad Afghanistan Kabul Kandahar Pashto English keyboard message phone number address").split(" ");
+
+/* ===== حالت ===== */
+var lang="ps", shift=false, ta=document.getElementById("ta"), kb=document.getElementById("kb"), sug=document.getElementById("sug"), isl=document.getElementById("isl");
+var user={};
+try{user=JSON.parse(localStorage.getItem("kb_user")||"{}")}catch(e){}
+function saveUser(){try{localStorage.setItem("kb_user",JSON.stringify(user))}catch(e){}}
+
+/* ===== تایپ ===== */
+function vib(){try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}}
+function curWord(){
+  var t=ta.value.slice(0,ta.selectionStart);
+  var m=t.match(/[^\s.,،؛؟!?:;()"'\/]+$/);
+  return m?m[0]:"";
+}
+function learn(){
+  var w=curWord();
+  if(w.length>1){user[w]=(user[w]||0)+1;saveUser()}
+}
+function ins(t){
+  ta.focus({preventScroll:true});
+  if(t===" "||/^[.,،؛؟!?:;]$/.test(t))learn();
+  ta.setRangeText(t,ta.selectionStart,ta.selectionEnd,"end");
+  if(shift&&lang==="en"){shift=false;render()}
+  update();
+}
+function back(){
+  ta.focus({preventScroll:true});
+  var s=ta.selectionStart,e=ta.selectionEnd;
+  if(s!==e)ta.setRangeText("",s,e,"end");
+  else if(s>0)ta.setRangeText("",s-1,s,"end");
+  update();
+}
+function update(){suggest();ta.scrollTop=ta.scrollHeight}
+
+/* ===== وړاندیز ===== */
+function suggest(){
+  var w=curWord(), list=[];
+  var isPs=/[\u0600-\u06FF]/.test(w)||(!w&&lang==="ps");
+  var base=isPs?PS_WORDS:EN_WORDS;
+  var lw=w.toLowerCase();
+  if(w){
+    var seen={};
+    var users=Object.keys(user).filter(function(k){return k!==w&&k.toLowerCase().indexOf(lw)===0})
+      .sort(function(a,b){return user[b]-user[a]});
+    users.concat(base.filter(function(k){return k!==w&&k.toLowerCase().indexOf(lw)===0})).forEach(function(k){
+      if(!seen[k]){seen[k]=1;list.push(k)}
+    });
+  }else{
+    list=Object.keys(user).filter(function(k){return isPs===/[\u0600-\u06FF]/.test(k)})
+      .sort(function(a,b){return user[b]-user[a]}).slice(0,4);
+    var def=isPs?["سلام","مننه","ښه","زه"]:["hello","thanks","good","I"];
+    def.forEach(function(d){if(list.indexOf(d)<0)list.push(d)});
+  }
+  sug.innerHTML="";
+  list.slice(0,10).forEach(function(k,i){
+    var b=document.createElement("button");
+    b.className="chip"+(i===0&&w?" first":"");
+    b.textContent=k;
+    b.dir="auto";
+    b.addEventListener("pointerdown",function(ev){
+      ev.preventDefault();vib();
+      var cw=curWord(),s=ta.selectionStart;
+      ta.focus({preventScroll:true});
+      ta.setRangeText(k+" ",s-cw.length,s,"end");
+      user[k]=(user[k]||0)+1;saveUser();
+      update();
+    });
+    sug.appendChild(b);
+  });
+}
+
+/* ===== جوړول ===== */
+function key(label,cls,fn,hold){
+  var b=document.createElement("button");
+  b.className="k"+(cls?" "+cls:"");
+  b.textContent=label;
+  var timer=null,rep=null;
+  b.addEventListener("pointerdown",function(ev){
+    ev.preventDefault();vib();fn();
+    if(hold){timer=setTimeout(function(){rep=setInterval(fn,70)},400)}
+  });
+  function stop(){clearTimeout(timer);clearInterval(rep)}
+  b.addEventListener("pointerup",stop);
+  b.addEventListener("pointerleave",stop);
+  b.addEventListener("pointercancel",stop);
+  return b;
+}
+function mkRow(keys,ltr){
+  var r=document.createElement("div");
+  r.className="row"+(ltr?" ltr":"");
+  keys.forEach(function(k){r.appendChild(k)});
+  return r;
+}
+function chars(arr,upper){
+  return arr.map(function(c){
+    var v=upper?c.toUpperCase():c;
+    return key(v,"",function(){ins(v)});
+  });
+}
+function render(){
+  kb.innerHTML="";
+  if(lang==="ps"){
+    PS_ROWS.forEach(function(r){kb.appendChild(mkRow(chars(r)))});
+    kb.appendChild(mkRow(chars(PS_EXTRA)));
+  }else if(lang==="en"){
+    EN_ROWS.slice(0,2).forEach(function(r,i){
+      var ks=chars(r,shift);
+      kb.appendChild(mkRow(ks,true));
+    });
+    var third=chars(EN_ROWS[2],shift);
+    third.unshift(key("⇧","fn w2"+(shift?" on":""),function(){shift=!shift;render()}));
+    third.push(key("⌫","fn w2",back,true));
+    kb.appendChild(mkRow(third,true));
+  }else{
+    SYM_ROWS.forEach(function(r){kb.appendChild(mkRow(chars(r)))});
+  }
+  var bottom=[
+    key(lang==="sym"?"ابج":"123","fn",function(){lang=lang==="sym"?"ps":"sym";render();update()}),
+    key(lang==="en"?"پښتو":"EN","fn",function(){lang=lang==="en"?"ps":"en";shift=false;render();update()}),
+    key("☪","gold",function(){isl.classList.add("show");kb.style.display="none"}),
+    key("فاصله","fn sp",function(){ins(" ")}),
+  ];
+  if(lang!=="en")bottom.push(key("⌫","fn",back,true));
+  bottom.push(key("↵","go",function(){ins("\n")}));
+  kb.appendChild(mkRow(bottom,true));
+}
+
+/* ===== اسلامي پاڼه ===== */
+(function(){
+  var b=document.createElement("button");
+  b.className="back";b.textContent="بیرته کیبورډ ته";
+  b.addEventListener("click",function(){isl.classList.remove("show");kb.style.display="flex"});
+  isl.appendChild(b);
+  ISLAMIC.forEach(function(p){
+    var x=document.createElement("button");
+    x.className="p";x.textContent=p;
+    x.addEventListener("click",function(){
+      ta.focus({preventScroll:true});
+      ta.setRangeText(p+" ",ta.selectionStart,ta.selectionEnd,"end");
+      update();
+      isl.classList.remove("show");kb.style.display="flex";
+    });
+    isl.appendChild(x);
+  });
+})();
+
+/* ===== کاپي او پاکول ===== */
+function toast(t){
+  var e=document.getElementById("toast");e.textContent=t;e.classList.add("show");
+  setTimeout(function(){e.classList.remove("show")},1400);
+}
+document.getElementById("copy").addEventListener("click",function(){
+  var t=ta.value;if(!t){toast("متن نشته");return}
+  function fallback(){ta.select();document.execCommand("copy");toast("کاپي شو")}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){toast("کاپي شو")},fallback);
+  }else fallback();
+});
+document.getElementById("clear").addEventListener("click",function(){
+  ta.value="";update();toast("پاک شو");
+});
+ta.addEventListener("click",update);
+ta.addEventListener("keyup",update);
+
+render();suggest();
+</script>
+</body>
+</html>
